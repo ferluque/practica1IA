@@ -7,64 +7,64 @@ Action ComportamientoJugador::think(Sensores sensores)
 
 	Action accion = actIDLE;
 	int a;
-
-	switch (last_action)
-	{
-	case actFORWARD:
-		switch (current_state.brujula)
+	if (current_state.bien_situado) {
+		switch (last_action)
 		{
-		case norte:
-			current_state.fil--;
+		case actFORWARD:
+			switch (current_state.brujula)
+			{
+			case norte:
+				current_state.fil--;
+				break;
+			case noreste:
+				current_state.fil--;
+				current_state.col++;
+				break;
+			case este:
+				current_state.col++;
+				break;
+			case sureste:
+				current_state.fil++;
+				current_state.col++;
+				break;
+			case sur:
+				current_state.fil++;
+				break;
+			case suroeste:
+				current_state.fil++;
+				current_state.col--;
+				break;
+			case oeste:
+				current_state.col--;
+				break;
+			case noroeste:
+				current_state.col--;
+				current_state.fil--;
+				break;
+			}
 			break;
-		case noreste:
-			current_state.fil--;
-			current_state.col++;
+		case actTURN_SL:
+			a = current_state.brujula;
+			a = (a + 7) % 8;
+			current_state.brujula = static_cast<Orientacion>(a);
 			break;
-		case este:
-			current_state.col++;
+		case actTURN_SR:
+			a = current_state.brujula;
+			a = (a + 1) % 8;
+			current_state.brujula = static_cast<Orientacion>(a);
 			break;
-		case sureste:
-			current_state.fil++;
-			current_state.col++;
+		case actTURN_BL:
+			a = current_state.brujula;
+			a = (a + 5) % 8;
+			current_state.brujula = static_cast<Orientacion>(a);
 			break;
-		case sur:
-			current_state.fil++;
-			break;
-		case suroeste:
-			current_state.fil++;
-			current_state.col--;
-			break;
-		case oeste:
-			current_state.col--;
-			break;
-		case noroeste:
-			current_state.col--;
-			current_state.fil--;
+		case actTURN_BR:
+			a = current_state.brujula;
+			a = (a + 3) % 8;
+			current_state.brujula = static_cast<Orientacion>(a);
 			break;
 		}
-		break;
-	case actTURN_SL:
-		a = current_state.brujula;
-		a = (a + 7) % 8;
-		current_state.brujula = static_cast<Orientacion>(a);
-		break;
-	case actTURN_SR:
-		a = current_state.brujula;
-		a = (a + 1) % 8;
-		current_state.brujula = static_cast<Orientacion>(a);
-		break;
-	case actTURN_BL:
-		a = current_state.brujula;
-		a = (a + 5) % 8;
-		current_state.brujula = static_cast<Orientacion>(a);
-		break;
-	case actTURN_BR:
-		a = current_state.brujula;
-		a = (a + 3) % 8;
-		current_state.brujula = static_cast<Orientacion>(a);
-		break;
 	}
-
 	cout << "Posicion: fila " << sensores.posF << " columna " << sensores.posC << " ";
 	if (sensores.posF != -1)
 	{
@@ -116,6 +116,8 @@ Action ComportamientoJugador::think(Sensores sensores)
 	cout << "Contador Recarga: " << contadorRecarga << endl;
 	cout << "Tiene bikini: " << current_state.tiene_bikini << endl;
 	cout << "Tiene zapatillas: " << current_state.tiene_zapatillas << endl;
+	cout << "Posicion: " << current_state.fil << ", " << current_state.col << endl;
+	cout << "Bien situado: " << current_state.bien_situado << endl;
 	cout << endl;
 
 	// Nos situamos si estamos en una casilla azul
@@ -140,10 +142,10 @@ Action ComportamientoJugador::think(Sensores sensores)
 	// Sin embargo, solo vamos a ir intencionadamente a una casilla de recarga cuando:
 	// * Tengamos menos de 1000 de batería, con prioridad máxima
 	// * Tengamos menos de 2500 de batería y no encontremos otra casilla de interés (bikini, zapatillas o posicionamiento) que siga siendo útil
-	else if ((sensores.bateria<2500 and !current_state.tiene_bikini and !current_state.tiene_zapatillas) or
+	else if (((sensores.bateria<3000 and !current_state.tiene_bikini and !current_state.tiene_zapatillas) or
 	(sensores.bateria<2000 and !current_state.tiene_bikini and current_state.tiene_zapatillas) or
-	(sensores.bateria<1500 and current_state.tiene_bikini and !current_state.tiene_zapatillas) or
-	(sensores.bateria<1000 and current_state.tiene_bikini and current_state.tiene_zapatillas)
+	(sensores.bateria<2000 and current_state.tiene_bikini and !current_state.tiene_zapatillas) or
+	(sensores.bateria<min(sensores.vida, 1500) and current_state.tiene_bikini and current_state.tiene_zapatillas))
 	&& sensores.terreno[0]=='X')
 	{
 		accion = actIDLE;
@@ -159,6 +161,8 @@ Action ComportamientoJugador::think(Sensores sensores)
 		// Planear hasta donde llegar si no hay plan y hay un punto interesante cerca
 		if (plan.size() == 0)
 		{
+			// Calculamos si en nuestro rango de visión hay casillas desconocidas, en caso de que las haya, nos interesa ir a ellas
+			// antes que a otras que ya conocemos
 			int objetivo = encuentraElementoImportante(sensores.terreno, current_state, sensores.bateria);
 			if (objetivo != -1)
 			{
@@ -168,16 +172,13 @@ Action ComportamientoJugador::think(Sensores sensores)
 
 		// SIGUIENTE PASO: CONTROLAR COLISIONES, CAÍDAS...
 
-		// TAMBIÉN SERÍA INTERESANTE QUE CUANDO VEAMOS UNA CASILLA DE RECARGA, GUARDEMOS SU POSICIÓN
-		// PARA CUANDO NOS QUEDE POCA BATERÍA, PODER IR A BUSCARLA, SIEMPRE QUE ESTEMOS BIEN POSICIONADOS
-
 		// Si tenemos plan, lo seguimos
 		if (plan.size() != 0)
 		{
 			accion = plan.front();
 			plan.pop();
-			// Controlamos no tirarnos por el barranco girando 135 grados y cancelando el plan
-			if (accion == actFORWARD && sensores.terreno[2] == 'P')
+			// Controlamos no tirarnos por el barranco ni chocarnos,  girando 135 grados y cancelando el plan
+			if (accion == actFORWARD && (sensores.terreno[2] == 'P' or sensores.terreno[2]=='M'))
 			{
 				queue<Action> empty;
 				swap(plan, empty);
@@ -195,6 +196,8 @@ Action ComportamientoJugador::think(Sensores sensores)
 		}
 		else
 		{
+			// Si no tenemos plan, vemos en qué dirección no conocemos el terreno y avanzamos hacia allí
+			
 			if ((sensores.terreno[2] == 'T' or sensores.terreno[2] == 'S' or sensores.terreno[2] == 'G' or (sensores.terreno[2]=='B' && (sensores.bateria>1000 or current_state.tiene_zapatillas)) or (sensores.terreno[2]=='A') && (sensores.bateria>2000 or current_state.tiene_bikini)) and
 				sensores.superficie[2] == '_')
 			{
@@ -261,7 +264,8 @@ int encuentraElementoImportante(const vector<unsigned char> &terreno, const stat
 	int pos = -1;
 	for (int i = 1; i < terreno.size() && pos == -1; i++)
 	{
-		if (terreno[i] == 'X' and bateria<1000)
+		// Intenta recargar la batería cuando tenga poca con menos prioridad
+		if (terreno[i] == 'X' and bateria<2500)
 			pos = i;
 		if (terreno[i] == 'K' && !st.tiene_bikini)
 			pos = i;
@@ -269,7 +273,7 @@ int encuentraElementoImportante(const vector<unsigned char> &terreno, const stat
 			pos = i;
 		if (terreno[i] == 'G' && !st.bien_situado)
 			pos = i;
-		if (terreno[i] == 'X' && bateria<300)
+		if (terreno[i] == 'X' && bateria<1500)
 			pos = i;
 	}
 	return pos;

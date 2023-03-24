@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "configurations": [
+
+        {
+            "name": "Debug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceRoot}/build/practica1",
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": "build"
+            // set environment variables
+            // "environment": [
+            //     {
+            //         "name": "DISPLAY",
+            //         "value": ":1.0"
+            //     }
+            // ],
+            
+        }
+    ]
+}
