@@ -37,9 +37,15 @@ public:
 
     for (int i=0; i<size; i++) 
       heatMap.push_back(vector<int>(size));
-    for (int i=0; i<size; i++)
-      for (int j=0; j<size; j++)
+    for (int i=3; i<size-3; i++)
+      for (int j=3; j<size-3; j++)
         heatMap[i][j] = 0;
+    for (int i=0; i<3; i++) {
+      for (int j=0; j<size; j++) {
+        heatMap[i][j] = 1000000; heatMap[j][i]=1000000;
+        heatMap[size-i-1][j] = 1000000; heatMap[j][size-i-1]=1000000;
+      }
+    }
 
     for (int i = 0; i < 8; ++i)
       casillasTerreno.push_back(vector<pair<int, int>>(16));
@@ -127,6 +133,8 @@ private:
   vector<vector<pair<int, int>>> casillasTerreno;
   vector<vector<int>> heatMap;
 };
+int ladoMasFrioNoSituado(const vector<unsigned char>& terreno, const state& st);
+int ladoMasFrio(const state& current_state, const vector<vector<int>>& heatMap, const vector<vector<pair<int,int>>>& casillasTerreno);
 
 int casillaMasFria(state &st, const vector<vector<int>> &heatMap, const vector<vector<pair<int, int>>> &casillasTerreno);
 
@@ -134,7 +142,7 @@ int direccionDesconocida(const state &current_state, const vector<vector<unsigne
 
 void planeaHastaObjetivo(queue<Action> &plan, const int &objetivo, const state &st);
 
-void rellenaMapa(const vector<unsigned char> &terreno, vector<vector<unsigned char>> &mapa, const state &st, const vector<vector<pair<int,int>>>& casillasTerreno, vector<vector<int>>& heatMap);
+void rellenaMapa(const vector<unsigned char> &terreno, vector<vector<unsigned char>> &mapa, const state &st, const vector<vector<pair<int,int>>>& casillasTerreno, vector<vector<int>>& heatMap, const Sensores& sensores);
 
 int encuentraElementoImportante(const vector<unsigned char> &terreno, state &st, const int &bateria);
 

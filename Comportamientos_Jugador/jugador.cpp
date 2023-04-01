@@ -1,10 +1,22 @@
 #include "../Comportamientos_Jugador/jugador.hpp"
 #include <iostream>
+#include <thread>
+#include <chrono>
 using namespace std;
+
+void print_queue(queue<Action> q)
+{
+	while (!q.empty())
+	{
+		std::cout << q.front() << " ";
+		q.pop();
+	}
+	std::cout << std::endl;
+}
 
 Action ComportamientoJugador::think(Sensores sensores)
 {
-	Action accion = actIDLE;
+	Action accion = actFORWARD;
 	int a;
 	if (current_state.bien_situado)
 	{
@@ -43,6 +55,13 @@ Action ComportamientoJugador::think(Sensores sensores)
 				break;
 			}
 			break;
+		}
+	}
+	if (sensores.nivel > 0)
+	{
+		cout << "Cambiamos orientación" << endl;
+		switch (last_action)
+		{
 		case actTURN_SL:
 			a = current_state.brujula;
 			a = (a + 7) % 8;
@@ -72,7 +91,7 @@ Action ComportamientoJugador::think(Sensores sensores)
 		current_state.col = sensores.posC;
 		current_state.brujula = sensores.sentido;
 	}
-	switch (sensores.sentido)
+	switch (current_state.brujula)
 	{
 	case 0:
 		cout << "Norte" << endl;
@@ -121,11 +140,16 @@ Action ComportamientoJugador::think(Sensores sensores)
 	cout << "Bien situado: " << current_state.bien_situado << endl;
 	// cout << "Atrapado: " << current_state.atrapado << endl;
 	cout << "Longitud del plan: " << plan.size() << endl;
+	cout << "Longitud del plan secundario: " << planSecundario.size() << endl;
 	cout << endl;
 
 	// Si nos coge el lobo, ya no estaremos bien situados
 	if (sensores.reset)
+	{
 		current_state.bien_situado = false;
+		current_state.tiene_bikini = false;
+		current_state.tiene_zapatillas = false;
+	}
 
 	// Nos situamos si estamos en una casilla azul
 	if (((sensores.terreno[0] == 'G') or (sensores.nivel == 0)) and !current_state.bien_situado)
@@ -138,7 +162,7 @@ Action ComportamientoJugador::think(Sensores sensores)
 
 	// Rellenar el mapa con la visión si estamos bien situados
 	if (current_state.bien_situado)
-		rellenaMapa(sensores.terreno, mapaResultado, current_state, casillasTerreno, heatMap);
+		rellenaMapa(sensores.terreno, mapaResultado, current_state, casillasTerreno, heatMap, sensores);
 
 	// Si llegamos a zapatillas o bikini los recogemos
 	if (sensores.terreno[0] == 'K' && !current_state.tiene_bikini)
@@ -177,9 +201,11 @@ Action ComportamientoJugador::think(Sensores sensores)
 
 			if (objetivo != -1)
 			{
-				cout << "Queremos ir a terreno: " << objetivo << endl;
 				planeaHastaObjetivo(plan, objetivo, current_state);
 				// Vaciamos ya el plan Secundario
+				// cout << endl
+				// 	 << "Queremos ir hasta " << objetivo << endl;
+				// this_thread::sleep_for(chrono::seconds(2));
 				queue<Action> empty;
 				swap(planSecundario, empty);
 			}
@@ -195,108 +221,172 @@ Action ComportamientoJugador::think(Sensores sensores)
 		}
 		else
 		{
-			// Si no tenemos plan, vemos en qué dirección no conocemos el terreno y avanzamos hacia allí
-			// Si miramos a los puntos cardinales principales:
-			int oriObjetivo = -1;
-			// if ((current_state.brujula == 0 or current_state.brujula == 2 or current_state.brujula == 4 or current_state.brujula == 6) and current_state.bien_situado)
+			// if ( current_state.bien_situado)
 			// {
-			// 	oriObjetivo = direccionDesconocida(current_state, mapaResultado);
-			// 	if (oriObjetivo != -1)
+			// 	if (planSecundario.empty())
 			// 	{
-			// 		// Caso girar a a la derecha
-			// 		if (((oriObjetivo - current_state.brujula) == 2) or ((oriObjetivo - current_state.brujula) == -6))
-			// 		{
-			// 			plan.push(actTURN_SR);
-			// 			plan.push(actTURN_SR);
-			// 			plan.push(actFORWARD);
-			// 		}
-			// 		// Caso girar a a la izquierda
-			// 		if (((oriObjetivo - current_state.brujula) == 6) or ((oriObjetivo - current_state.brujula) == -2))
-			// 		{
-			// 			plan.push(actTURN_SL);
-			// 			plan.push(actTURN_SL);
-			// 			plan.push(actFORWARD);
-			// 		}
-			// 		// Caso girar 180º
-			// 		if (((oriObjetivo - current_state.brujula) == 4) or ((oriObjetivo - current_state.brujula) == -4))
-			// 		{
-			// 			plan.push(actTURN_BR);
-			// 			plan.push(actTURN_SR);
-			// 			plan.push(actFORWARD);
-			// 		}
+			// 		// Buscamos la casilla más fría y nos movemos ahí
+			// 		// int posFria = casillaMasF2ria(current_state, heatMap, casillasTerreno);
+			// 		int ladoFrio = ladoMasFrio(current_state, heatMap, casillasTerreno);
+			// 		// cout << "Queremos ir hasta " << posFria << " por temperatura" << endl;
+			// 		// planeaHastaObjetivo(planSecundario, posFria, current_state);
+
+			// 		// Nos movemos en la dirección más fría
+			// 		planeaHastaObjetivo(planSecundario, ladoFrio, current_state);
+			// 	}
+			// 	accion = planSecundario.front();
+			// 	planSecundario.pop();
+			// }
+			// // Si aún no estamos situados, valoramos el movimiento por el tipo de terreno
+			// else
+			// {
+			// if (planSecundario.empty())
+			// {
+			// 	int ladoFrio = ladoMasFrioNoSituado(sensores.terreno, current_state);
+			// 	planeaHastaObjetivo(planSecundario, ladoFrio, current_state);
+			// }
+			// accion = planSecundario.front();
+			// planSecundario.pop();
+
+			// else if ((sensores.terreno[2] == 'T' or sensores.terreno[2] == 'S' or sensores.terreno[2] == 'G' or (sensores.terreno[2] == 'B' && (sensores.bateria > 500 or current_state.tiene_zapatillas)) or (sensores.terreno[2] == 'A') && (sensores.bateria > 1000 or current_state.tiene_bikini)) and
+			// 		 sensores.superficie[2] == '_')
+			// {
+			// 	accion = actFORWARD;
+			// }
+			// else if (!girar_derecha)
+			// {
+			// 	accion = actTURN_SL;
+			// 	girar_derecha = (rand() % 2 == 0);
+			// 	// Si vemos un muro, es probable que estemos atrapados
+			// 	if (sensores.terreno[2] == 'M')
+			// 	{
+			// 		contadorAtrapado++;
+			// 		if (contadorAtrapado > 20)
+			// 			current_state.atrapado = true;
 			// 	}
 			// }
-
-			if (oriObjetivo == -1 and current_state.bien_situado)
-			{
-				if (planSecundario.empty())
-				{
-					// Buscamos la casilla más fría y nos movemos ahí
-					int posFria = casillaMasFria(current_state, heatMap, casillasTerreno);
-					cout << "Queremos ir hasta " << posFria << " por temperatura" << endl;
-					planeaHastaObjetivo(planSecundario, posFria, current_state);
-				}
-				accion = planSecundario.front();
-				planSecundario.pop();
-			}
-			else if ((sensores.terreno[2] == 'T' or sensores.terreno[2] == 'S' or sensores.terreno[2] == 'G' or (sensores.terreno[2] == 'B' && (sensores.bateria > 500 or current_state.tiene_zapatillas)) or (sensores.terreno[2] == 'A') && (sensores.bateria > 1000 or current_state.tiene_bikini)) and
-					 sensores.superficie[2] == '_')
-			{
-				accion = actFORWARD;
-			}
-			else if (!girar_derecha)
-			{
-				accion = actTURN_SL;
-				girar_derecha = (rand() % 2 == 0);
-				// Si vemos un muro, es probable que estemos atrapados
-				if (sensores.terreno[2] == 'M')
-				{
-					contadorAtrapado++;
-					if (contadorAtrapado > 20)
-						current_state.atrapado = true;
-				}
-			}
-			else
-			{
-				accion = actTURN_SR;
-				girar_derecha = (rand() % 2 == 0);
-				// Si vemos un muro, es probable que estemos atrapados
-				if (sensores.terreno[2] == 'M')
-				{
-					contadorAtrapado++;
-					if (contadorAtrapado > 20)
-						current_state.atrapado = true;
-				}
-			}
+			// else
+			// {
+			// 	accion = actTURN_SR;
+			// 	girar_derecha = (rand() % 2 == 0);
+			// 	// Si vemos un muro, es probable que estemos atrapados
+			// 	if (sensores.terreno[2] == 'M')
+			// 	{
+			// 		contadorAtrapado++;
+			// 		if (contadorAtrapado > 20)
+			// 			current_state.atrapado = true;
+			// 	}
+			// }
 		}
 	}
 	// Controlamos no tirarnos por el barranco ni chocarnos,  girando 135 grados y cancelando el plan
 	if (accion == actFORWARD && (sensores.terreno[2] == 'P' or sensores.terreno[2] == 'M' or sensores.superficie[2] != '_'))
 	{
 		// Si vemos un muro, es probable que estemos atrapados
-		if (sensores.terreno[2] == 'M')
+		// if (sensores.terreno[2] == 'M')
+		// {
+		// 	contadorAtrapado++;
+		// 	if (contadorAtrapado > 20)
+		// 		current_state.atrapado = true;
+		// }
+		
+		// Si hay un muro, un acantilado o un aldeano gastamos dos turnos para girar 90%
+		if (sensores.terreno[2] == 'P' or sensores.terreno[2] == 'M' or sensores.superficie[2] == 'a')
 		{
-			contadorAtrapado++;
-			if (contadorAtrapado > 20)
-				current_state.atrapado = true;
+			if (!girar_derecha)
+			{
+				accion = actTURN_BL;
+				girar_derecha = (rand() % 2 == 0);
+				while (girar_derecha) {
+					plan.push(actTURN_SL);
+				}
+				plan.push(actFORWARD);
+			}
+			else
+			{
+				accion = actTURN_BR;
+				girar_derecha = (rand() % 2 == 0);
+				while (girar_derecha) {
+					plan.push(actTURN_SR);
+				}
+				plan.push(actFORWARD);
+			}
 		}
-		queue<Action> empty;
-		swap(plan, empty);
-		if (!girar_derecha)
-		{
-			accion = actTURN_BL;
-			girar_derecha = (rand() % 2 == 0);
-		}
-		else
-		{
-			accion = actTURN_BR;
-			girar_derecha = (rand() % 2 == 0);
-		}
-		cout << "Huimos" << endl;
 	}
 
 	last_action = accion;
 	return accion;
+}
+
+int ladoMasFrioNoSituado(const vector<unsigned char> &terreno, const state &st)
+{
+	vector<int> valoraciones(terreno.size());
+	for (int i = 0; i < valoraciones.size(); i++)
+	{
+		switch (terreno[i])
+		{
+		case 'B':
+			if (st.tiene_zapatillas)
+				valoraciones[i] = 20 * (16 - i) / 16;
+			else
+				valoraciones[i] = 2 * (16 - i) / 16;
+			break;
+		case 'A':
+			if (st.tiene_bikini)
+				valoraciones[i] = 30 * (16 - i) / 16;
+			else
+				valoraciones[i] = 3 * (16 - i) / 16;
+		// case 'P':
+		// 	valoraciones[i] = 50 * (16 - i) / 16;
+		// 	break;
+		// case 'M':
+		// 	valoraciones[i] = 5 * (16 - i) / 16;
+		// 	break;
+		default:
+			valoraciones[i] = 1;
+		}
+	}
+	double izq = (double)(valoraciones[1] + valoraciones[4] + valoraciones[5] + valoraciones[9] + valoraciones[10] + valoraciones[11]) / 6.0;
+	double dcha = (double)(valoraciones[3] + valoraciones[7] + valoraciones[8] + valoraciones[13] + valoraciones[14] + valoraciones[15]) / 6.0;
+	double medio = (double)(valoraciones[2] + valoraciones[6] + valoraciones[12]) / 3.0;
+
+	if (izq < dcha and izq < medio)
+		return 1;
+	else if (medio <= dcha and medio <= izq)
+		return 2;
+	else if (dcha < medio and dcha < izq)
+		return 3;
+	return 2;
+}
+
+int ladoMasFrio(const state &st, const vector<vector<int>> &heatMap, const vector<vector<pair<int, int>>> &casillasTerreno)
+{
+	int i0 = st.fil, j0 = st.col;
+	double izq = (double)(heatMap[i0 + casillasTerreno[st.brujula][1].first][j0 + casillasTerreno[st.brujula][1].second] +
+						  heatMap[i0 + casillasTerreno[st.brujula][4].first][j0 + casillasTerreno[st.brujula][4].second] +
+						  heatMap[i0 + casillasTerreno[st.brujula][5].first][j0 + casillasTerreno[st.brujula][5].second] +
+						  heatMap[i0 + casillasTerreno[st.brujula][9].first][j0 + casillasTerreno[st.brujula][9].second] +
+						  heatMap[i0 + casillasTerreno[st.brujula][10].first][j0 + casillasTerreno[st.brujula][10].second] +
+						  heatMap[i0 + casillasTerreno[st.brujula][11].first][j0 + casillasTerreno[st.brujula][11].second]) /
+				 6.0;
+	double dcha = (double)(heatMap[i0 + casillasTerreno[st.brujula][3].first][j0 + casillasTerreno[st.brujula][3].second] +
+						   heatMap[i0 + casillasTerreno[st.brujula][7].first][j0 + casillasTerreno[st.brujula][7].second] +
+						   heatMap[i0 + casillasTerreno[st.brujula][8].first][j0 + casillasTerreno[st.brujula][8].second] +
+						   heatMap[i0 + casillasTerreno[st.brujula][13].first][j0 + casillasTerreno[st.brujula][13].second] +
+						   heatMap[i0 + casillasTerreno[st.brujula][14].first][j0 + casillasTerreno[st.brujula][14].second] +
+						   heatMap[i0 + casillasTerreno[st.brujula][15].first][j0 + casillasTerreno[st.brujula][15].second]) /
+				  6.0;
+	double medio = (double)(heatMap[i0 + casillasTerreno[st.brujula][2].first][j0 + casillasTerreno[st.brujula][2].second] +
+							heatMap[i0 + casillasTerreno[st.brujula][6].first][j0 + casillasTerreno[st.brujula][6].second] +
+							heatMap[i0 + casillasTerreno[st.brujula][12].first][j0 + casillasTerreno[st.brujula][12].second]) /
+				   3.0;
+	if (izq < dcha and izq < medio)
+		return 1;
+	else if (medio <= dcha and medio <= izq)
+		return 2;
+	else if (dcha < medio and dcha < izq)
+		return 3;
+	return 2;
 }
 
 int direccionDesconocida(const state &current_state, const vector<vector<unsigned char>> &mapaResultado)
@@ -317,47 +407,81 @@ int direccionDesconocida(const state &current_state, const vector<vector<unsigne
 
 void planeaHastaObjetivo(queue<Action> &plan, const int &objetivo, const state &st)
 {
-	plan.push(actFORWARD);
-	int posActual = 2;
-	if (objetivo > 3)
+	if ((st.brujula == 0 or st.brujula == 2 or st.brujula == 4 or st.brujula == 6) or
+		(objetivo != 3 and objetivo != 8 and objetivo != 15 and objetivo != 1 and objetivo != 4 and objetivo != 9))
 	{
 		plan.push(actFORWARD);
-		posActual = 6;
-		if (objetivo > 8)
+		int posActual = 2;
+		if (objetivo > 3)
 		{
 			plan.push(actFORWARD);
-			posActual = 12;
+			posActual = 6;
+			if (objetivo > 8)
+			{
+				plan.push(actFORWARD);
+				posActual = 12;
+			}
 		}
-	}
-	if (objetivo < posActual)
-	{
-		if (st.brujula == 0 or st.brujula == 2 or st.brujula == 4 or st.brujula == 6)
+		if (objetivo < posActual)
 		{
-			plan.push(actTURN_SL);
+			if (st.brujula == 0 or st.brujula == 2 or st.brujula == 4 or st.brujula == 6)
+				plan.push(actTURN_SL);
 			plan.push(actTURN_SL);
 		}
-		else
-			plan.push(actTURN_BL);
-	}
-	if (objetivo > posActual)
-	{
-		if (st.brujula == 0 or st.brujula == 2 or st.brujula == 4 or st.brujula == 6)
+		if (objetivo > posActual)
 		{
 			plan.push(actTURN_SR);
 			plan.push(actTURN_SR);
 		}
-		else
-			plan.push(actTURN_BR);
+		while (objetivo < posActual)
+		{
+			plan.push(actFORWARD);
+			posActual--;
+		}
+		while (objetivo > posActual)
+		{
+			plan.push(actFORWARD);
+			posActual++;
+		}
 	}
-	while (objetivo < posActual)
+	else
 	{
-		plan.push(actFORWARD);
-		posActual--;
-	}
-	while (objetivo > posActual)
-	{
-		plan.push(actFORWARD);
-		posActual++;
+		if (objetivo == 1)
+		{
+			plan.push(actTURN_SL);
+			plan.push(actFORWARD);
+		}
+		if (objetivo == 4)
+		{
+			plan.push(actTURN_SL);
+			plan.push(actFORWARD);
+			plan.push(actFORWARD);
+		}
+		if (objetivo == 9)
+		{
+			plan.push(actTURN_SL);
+			plan.push(actFORWARD);
+			plan.push(actFORWARD);
+			plan.push(actFORWARD);
+		}
+		if (objetivo == 3)
+		{
+			plan.push(actTURN_SR);
+			plan.push(actFORWARD);
+		}
+		if (objetivo == 8)
+		{
+			plan.push(actTURN_SR);
+			plan.push(actFORWARD);
+			plan.push(actFORWARD);
+		}
+		if (objetivo == 15)
+		{
+			plan.push(actTURN_SR);
+			plan.push(actFORWARD);
+			plan.push(actFORWARD);
+			plan.push(actFORWARD);
+		}
 	}
 }
 
@@ -371,7 +495,7 @@ int casillaMasFria(state &st, const vector<vector<int>> &heatMap, const vector<v
 	{
 		int fil = st.fil + casillasTerreno[st.brujula][i].first;
 		int col = st.col + casillasTerreno[st.brujula][i].second;
-		if (heatMap[fil][col] < minHeat)
+		if (heatMap[fil][col] <= minHeat)
 		{
 			minHeat = heatMap[fil][col];
 			posMinHeat = i;
@@ -383,25 +507,18 @@ int casillaMasFria(state &st, const vector<vector<int>> &heatMap, const vector<v
 int encuentraElementoImportante(const vector<unsigned char> &terreno, state &st, const int &bateria)
 {
 	int pos = -1;
-	bool quiereSalir = false;
 
-	for (int i = 1; i < terreno.size() && !quiereSalir; i++)
+	for (int i = 1; i < terreno.size(); i++)
 	{
-		// Busca hueco entre dos muros, pero tiene que hacerlo de otra forma
-		// if ((i==2) or (i>4 and i<8) or (i>9 and i<15)) {
-		// 	if ((terreno[i-1]=='M' or terreno[i-1]=='P') and ((terreno[i+1]=='M' or terreno[i+1]=='P')) and
-		// 	(terreno[i] == 'T' or terreno[i] == 'S' or terreno[i] == 'G' or terreno[i] == 'B' or terreno[i] == 'A')
-		// 	) {
-		// 		pos = i;quiereSalir=true;
-		// 		cout << "Encuentro la salida en Terreno: " << pos << endl;
-		// 	}
-		// }
-		// if (st.atrapado and (terreno[i] == 'T' or terreno[i] == 'S' or terreno[i] == 'G' or terreno[i] == 'B' or terreno[i]=='A')) {
-		// 	pos = i;
-		// 	st.atrapado=false;
-		// }
-
-		// Intenta recargar la batería cuando tenga poca con menos prioridad
+		if (st.atrapado and (terreno[i] == 'T' or terreno[i] == 'S' or terreno[i] == 'G' or terreno[i] == 'B' or terreno[i] == 'A'))
+		{
+			pos = i;
+			st.atrapado = false;
+		}
+		// Si encuentra un hueco entre dos muros pasa por el porque seguramente sea interesante
+		if (i == 2 or (i > 4 and i < 8) or (i > 9 and i < 15))
+			if (terreno[i - 1] == 'M' and terreno[i] != 'M' and terreno[i] != 'P' and terreno[i + 1] == 'M')
+				pos = i;
 		if (terreno[i] == 'X' and bateria < 2500)
 			pos = i;
 		if (terreno[i] == 'K' && !st.tiene_bikini)
@@ -410,26 +527,54 @@ int encuentraElementoImportante(const vector<unsigned char> &terreno, state &st,
 			pos = i;
 		if (terreno[i] == 'G' && !st.bien_situado)
 			pos = i;
+		;
 		if (terreno[i] == 'X' && bateria < 1500)
 			pos = i;
+	}
+	if (st.brujula == 0 or st.brujula == 2 or st.brujula == 4 or st.brujula == 6)
+	{
+		// Otra forma de encontrar un hyeco
+		if ((terreno[1] == 'M' or terreno[1] == 'P') and terreno[5] != 'M' and terreno[5] != 'P' and (terreno[11] == 'M' or terreno[11] == 'P'))
+			pos = 5;
+		else if ((terreno[2] == 'M' or terreno[2] == 'P') and terreno[6] != 'M' and terreno[6] != 'P' and (terreno[12] == 'M' or terreno[12] == 'P'))
+			pos = 6;
+		else if ((terreno[3] == 'M' or terreno[3] == 'P') and terreno[7] != 'M' and terreno[7] != 'P' and (terreno[13] == 'M' or terreno[13] == 'P'))
+			pos = 7;
 	}
 	return pos;
 }
 
-void rellenaMapa(const vector<unsigned char> &terreno, vector<vector<unsigned char>> &mapa, const state &st, const vector<vector<pair<int, int>>> &casillasTerreno, vector<vector<int>> &heatMap)
+void rellenaMapa(const vector<unsigned char> &terreno, vector<vector<unsigned char>> &mapa, const state &st, const vector<vector<pair<int, int>>> &casillasTerreno, vector<vector<int>> &heatMap, const Sensores &sensores)
 {
 	int i0 = st.fil, j0 = st.col;
 	mapa[i0][j0] = terreno[0];
 	heatMap[i0][j0]++;
-	cout << "Temperaturas: ";
+	if (!st.tiene_bikini and mapa[i0][j0] == 'A')
+		heatMap[i0][j0] += 50;
+	else if (st.tiene_bikini and mapa[i0][j0] == 'A' and heatMap[i0][j0] > 50)
+		heatMap[i0][j0] = 0.25 * sensores.vida;
+
+	if (!st.tiene_zapatillas and mapa[i0][j0] == 'B')
+		heatMap[i0][j0] += 20;
+	else if (st.tiene_zapatillas and mapa[i0][j0] == 'B' and heatMap[i0][j0] > 20)
+		heatMap[i0][j0] = 0.2 * sensores.vida;
+
 	for (int i = 1; i < terreno.size(); ++i)
 	{
 		int fil = i0 + casillasTerreno[static_cast<int>(st.brujula)][i].first;
 		int col = j0 + casillasTerreno[static_cast<int>(st.brujula)][i].second;
 		mapa[fil][col] = terreno[i];
-		cout << heatMap[fil][col];
+
+		if (!st.tiene_bikini and mapa[fil][col] == 'A')
+			heatMap[fil][col] += 50;
+		else if (st.tiene_bikini and mapa[fil][col] == 'A' and heatMap[fil][col] > 50)
+			heatMap[fil][col] = 0.25 * sensores.vida;
+
+		if (!st.tiene_zapatillas and mapa[fil][col] == 'B')
+			heatMap[fil][col] += 20;
+		else if (st.tiene_zapatillas and mapa[fil][col] == 'B' and heatMap[fil][col] > 20)
+			heatMap[fil][col] = 0.2 * sensores.vida;
 	}
-	cout << endl;
 }
 
 int ComportamientoJugador::interact(Action accion, int valor)
