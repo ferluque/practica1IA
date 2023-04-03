@@ -26,7 +26,7 @@ Action ComportamientoJugador::think(Sensores sensores)
 			plan.push(actTURN_SR);plan.push(actTURN_SR);
 		}
 	}
-	tocaAleatorio = (random()%3)!=0;
+	tocaAleatorio = (random() % 3) != 0;
 	int a;
 	if (current_state.bien_situado)
 	{
@@ -199,23 +199,28 @@ Action ComportamientoJugador::think(Sensores sensores)
 		contadorRecarga += 1;
 		cout << "Recarga" << endl;
 	}
-	else if (plan.empty()) {
+	else if (plan.empty())
+	{
 		int objetivo = encuentraElementoImportante(sensores.terreno, current_state, sensores.bateria);
-		if (objetivo!=-1) {
+		if (objetivo != -1)
+		{
 			planeaHastaObjetivo(plan, objetivo, current_state);
 			accion = plan.front();
 			plan.pop();
 		}
-		if ((objetivo==-1) and !tocaAleatorio) {
+		if ((objetivo == -1) and !tocaAleatorio)
+		{
 			int miniObjetivo = ladoMasFrio(sensores.terreno, current_state, heatMap, casillasTerreno);
 			planeaHastaObjetivo(plan, miniObjetivo, current_state);
 			accion = plan.front();
 			plan.pop();
-			tocaAleatorio = (rand()%3)!=0;
+			tocaAleatorio = (rand() % 3) != 0;
 		}
 	}
-	else {
-		accion = plan.front(); plan.pop();
+	else
+	{
+		accion = plan.front();
+		plan.pop();
 	}
 	// Controlamos no tirarnos por el barranco ni chocarnos,  girando 135 grados y cancelando el plan
 	if (accion == actFORWARD && (sensores.terreno[2] == 'P' or sensores.terreno[2] == 'M' or sensores.superficie[2] != '_'))
@@ -240,7 +245,7 @@ Action ComportamientoJugador::think(Sensores sensores)
 	return accion;
 }
 
-int ladoMasFrio(const vector<unsigned char> &terreno, const state &st, vector<vector<int>>& heatMap, const vector<vector<pair<int,int>>>& casillasTerreno)
+int ladoMasFrio(const vector<unsigned char> &terreno, const state &st, vector<vector<int>> &heatMap, const vector<vector<pair<int, int>>> &casillasTerreno)
 {
 	vector<double> valoraciones(terreno.size());
 	for (int i = 0; i < valoraciones.size(); i++)
@@ -263,8 +268,8 @@ int ladoMasFrio(const vector<unsigned char> &terreno, const state &st, vector<ve
 			valoraciones[i] = 1.0;
 			break;
 		}
-		if (st.bien_situado) 
-			valoraciones[i] += heatMap[st.fil+casillasTerreno[st.brujula][i].first][st.col+casillasTerreno[st.brujula][i].second];
+		if (st.bien_situado)
+			valoraciones[i] += heatMap[st.fil + casillasTerreno[st.brujula][i].first][st.col + casillasTerreno[st.brujula][i].second];
 	}
 	double izq = (double)(valoraciones[1] + valoraciones[4] + valoraciones[5] + valoraciones[9] + valoraciones[10] + valoraciones[11]) / 6.0;
 	double dcha = (double)(valoraciones[3] + valoraciones[7] + valoraciones[8] + valoraciones[13] + valoraciones[14] + valoraciones[15]) / 6.0;
@@ -279,6 +284,40 @@ int ladoMasFrio(const vector<unsigned char> &terreno, const state &st, vector<ve
 	return 2;
 }
 
+void giraHacia(queue<Action> &plan, const int objetivo, const state &st)
+{
+	int diferencia = objetivo - st.brujula;
+	if ((diferencia <= 4 and diferencia > 0) or (diferencia <= -4 and diferencia > -8))
+	{
+		if (diferencia < 0)
+			diferencia += 8;
+		while (diferencia >= 3)
+		{
+			plan.push(actTURN_BR);
+			diferencia -= 3;
+		}
+		while (diferencia > 0)
+		{
+			plan.push(actTURN_SR);
+			diferencia--;
+		}
+	}
+	else if (diferencia != 0)
+	{
+		if (diferencia > 0)
+			diferencia -= 8;
+		while (diferencia <= -3 and diferencia < 0)
+		{
+			plan.push(actTURN_BL);
+			diferencia += 3;
+		}
+		while (diferencia < 0)
+		{
+			plan.push(actTURN_SL);
+			diferencia++;
+		}
+	}
+}
 
 void planeaHastaObjetivo(queue<Action> &plan, const int &objetivo, const state &st)
 {

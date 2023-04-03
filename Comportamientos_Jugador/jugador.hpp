@@ -144,6 +144,8 @@ private:
 int ladoMasFrio(const vector<unsigned char>& terreno, const state& st, vector<vector<int>>& heatMap, const vector<vector<pair<int,int>>>& casillasTerreno);
 // int ladoMasFrio(const state& current_state, const vector<vector<int>>& heatMap, const vector<vector<pair<int,int>>>& casillasTerreno);
 
+void giraHacia(queue<Action> &plan, const int objetivo, const state &st);
+
 int casillaMasFria(state &st, const vector<vector<int>> &heatMap, const vector<vector<pair<int, int>>> &casillasTerreno);
 
 void planeaHastaObjetivo(queue<Action> &plan, const int &objetivo, const state &st);

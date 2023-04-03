@@ -1,83 +1,65 @@
 #include <iostream>
 #include <vector>
+#include <queue>
+
+#include "include/comportamientos/comportamiento.hpp"
 
 using namespace std;
 
-int main () {
-    vector<vector<pair<int,int>>> casillasTerreno(8);
-      for (int i=0; i<8; ++i)
-        casillasTerreno.push_back(vector<pair<int,int>>(16));
-      
-      // Norte
-      vector<pair<int,int>> posiciones = {
-          pair<int,int>(0,0), 
-          pair<int,int>(-1,-1), pair<int,int>(-1,0), pair<int,int>(-1,0), 
-          pair<int,int>(-2,-2), pair<int,int>(-2,-1), pair<int,int>(-2,0), pair<int,int>(-2,1), pair<int,int>(-2,2), 
-          pair<int,int>(-3,-3), pair<int,int>(-3,-2), pair<int,int>(-3,-1), pair<int,int>(-3,0), pair<int,int>(-3,1), pair<int,int>(-3,2), pair<int,int>(-3,3)
-      };    
-      casillasTerreno[0] = posiciones;
-          
-      // Noreste
-      posiciones = {
-          pair<int,int>(0,0), 
-          pair<int,int>(-1,0), pair<int,int>(-1,1), pair<int,int>(0,1), 
-          pair<int,int>(-2,0), pair<int,int>(-2,1), pair<int,int>(-2,2), pair<int,int>(-1,2), pair<int,int>(0,2), 
-          pair<int,int>(-3,0), pair<int,int>(-3,1), pair<int,int>(-3,2), pair<int,int>(-3,3), pair<int,int>(-2,3), pair<int,int>(-1,3), pair<int,int>(0,3)
-      };    
-      casillasTerreno[1] = posiciones;
+void print_queue(queue<Action> q)
+{
+    while (!q.empty())
+    {
+        std::cout << q.front() << " ";
+        q.pop();
+    }
+    std::cout << std::endl;
+}
 
-      // Este
-      posiciones = {
-          pair<int,int>(0,0), 
-          pair<int,int>(-1,1), pair<int,int>(0,1), pair<int,int>(1,1), 
-          pair<int,int>(-2,2), pair<int,int>(-1,2), pair<int,int>(0,2), pair<int,int>(1,2), pair<int,int>(2,2), 
-          pair<int,int>(-3,3), pair<int,int>(-2,3), pair<int,int>(-1,3), pair<int,int>(0,3), pair<int,int>(1,3), pair<int,int>(2,3), pair<int,int>(3,3)
-      };    
-      casillasTerreno[2] = posiciones;
-
-      // Sureste
-      posiciones = {
-          pair<int,int>(0,0), 
-          pair<int,int>(0,1), pair<int,int>(1,1), pair<int,int>(1,0), 
-          pair<int,int>(0,2), pair<int,int>(1,2), pair<int,int>(2,2), pair<int,int>(2,1), pair<int,int>(2,0), 
-          pair<int,int>(0,3), pair<int,int>(1,3), pair<int,int>(2,3), pair<int,int>(3,3), pair<int,int>(3,2), pair<int,int>(3,1), pair<int,int>(3,0)
-      };    
-      casillasTerreno[3] = posiciones;
-
-      // Sur
-      posiciones = {
-          pair<int,int>(0,0), 
-          pair<int,int>(1,1), pair<int,int>(1,0), pair<int,int>(1,-1), 
-          pair<int,int>(2,2), pair<int,int>(2,1), pair<int,int>(2,0), pair<int,int>(2,-1), pair<int,int>(2,-2), 
-          pair<int,int>(3,3), pair<int,int>(3,2), pair<int,int>(3,1), pair<int,int>(3,0), pair<int,int>(3,-1), pair<int,int>(3,-2), pair<int,int>(3,-3)
-      };    
-      casillasTerreno[4] = posiciones;
-
-      // Sin hacer: Suroeste
-      posiciones = {
-          pair<int,int>(0,0), 
-          pair<int,int>(1,0), pair<int,int>(1,-1), pair<int,int>(0,-1), 
-          pair<int,int>(2,0), pair<int,int>(2,-1), pair<int,int>(2,-2), pair<int,int>(1,-2), pair<int,int>(0,-2), 
-          pair<int,int>(3,0), pair<int,int>(3,-1), pair<int,int>(3,-2), pair<int,int>(3,-3), pair<int,int>(2,-3), pair<int,int>(1,-3), pair<int,int>(0,-3)
-      };    
-      casillasTerreno[5] = posiciones;
-
-
-      // Oeste
-      posiciones = {
-          pair<int,int>(0,0), 
-          pair<int,int>(-1,-1), pair<int,int>(0,-1), pair<int,int>(1,-1), 
-          pair<int,int>(-2,-2), pair<int,int>(-1,-2), pair<int,int>(0,-2), pair<int,int>(1,-2), pair<int,int>(2,-2), 
-          pair<int,int>(-3,-3), pair<int,int>(-2,-3), pair<int,int>(-1,-3), pair<int,int>(0,-3), pair<int,int>(1,-3), pair<int,int>(2,-3), pair<int,int>(3,-3)
-      };    
-      casillasTerreno[6] = posiciones;
-
-      // Sin hacer : Noroeste
-      posiciones = {
-          pair<int,int>(0,0), 
-          pair<int,int>(0,-1), pair<int,int>(-1,-1), pair<int,int>(-1,0), 
-          pair<int,int>(0,-2), pair<int,int>(-1,-2), pair<int,int>(-2,-2), pair<int,int>(-2,-1), pair<int,int>(-2,0), 
-          pair<int,int>(0,-3), pair<int,int>(-1,-3), pair<int,int>(-2,-3), pair<int,int>(-3,-3), pair<int,int>(-3,-2), pair<int,int>(-3,-1), pair<int,int>(-3,0)
-      };    
-      casillasTerreno[7] = posiciones;
+int main()
+{
+    queue<Action> plan;
+    for (int i = 0; i < 8; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        { 
+            int objetivo = j;
+            int brujula = i;
+            int diferencia = objetivo - brujula;
+            cout << "Actual: " << brujula << " // Objetivo: " << objetivo << endl; 
+            if ((diferencia <= 4 and diferencia > 0) or (diferencia <= -4 and diferencia > -8))
+            {
+                if (diferencia < 0)
+                    diferencia += 8;
+                while (diferencia >= 3)
+                {
+                    plan.push(actTURN_BR);
+                    diferencia -= 3;
+                }
+                while (diferencia > 0)
+                {
+                    plan.push(actTURN_SR);
+                    diferencia--;
+                }
+            }
+            else if (diferencia != 0)
+            {
+                if (diferencia > 0)
+                    diferencia -= 8;
+                while (diferencia <= -3 and diferencia<0)
+                {
+                    plan.push(actTURN_BL);
+                    diferencia += 3;
+                }
+                while (diferencia < 0)
+                {
+                    plan.push(actTURN_SL);
+                    diferencia++;
+                }
+            }
+            print_queue(plan);
+            queue<Action> empty;
+            swap(plan, empty);
+        }
+    }
 }
