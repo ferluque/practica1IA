@@ -26,6 +26,7 @@ public:
   {
     // Constructor de la clase
     // Dar el valor inicial a las variables de estado
+    tocaAleatorio = false;
     current_state.bien_situado = false;
     current_state.fil = -1;
     current_state.col = -1;
@@ -37,15 +38,21 @@ public:
 
     for (int i=0; i<size; i++) 
       heatMap.push_back(vector<int>(size));
-    for (int i=3; i<size-3; i++)
-      for (int j=3; j<size-3; j++)
+
+    for (int i=0; i<size; i++) {
+      for (int j=0; j<size; j++)
         heatMap[i][j] = 0;
+    }
     for (int i=0; i<3; i++) {
       for (int j=0; j<size; j++) {
-        heatMap[i][j] = 1000000; heatMap[j][i]=1000000;
-        heatMap[size-i-1][j] = 1000000; heatMap[j][size-i-1]=1000000;
+        mapaResultado[i][j] = 'P'; mapaResultado[j][i] = 'P';
+        mapaResultado[size-i-1][j] = 'P'; mapaResultado[j][size-i-1] = 'P';
       }
     }
+
+    indiceDefault = 0;
+    for (int i=0; i<size/3; i++)
+      planDefault.push_back(actFORWARD);
 
     for (int i = 0; i < 8; ++i)
       casillasTerreno.push_back(vector<pair<int, int>>(16));
@@ -127,18 +134,18 @@ private:
   Action last_action;
   bool girar_derecha;
   queue<Action> plan;
-  queue<Action> planSecundario;
+  vector<Action> planDefault;
+  int indiceDefault;
   int contadorRecarga;
   int contadorAtrapado;
   vector<vector<pair<int, int>>> casillasTerreno;
   vector<vector<int>> heatMap;
+  bool tocaAleatorio;
 };
-int ladoMasFrioNoSituado(const vector<unsigned char>& terreno, const state& st);
-int ladoMasFrio(const state& current_state, const vector<vector<int>>& heatMap, const vector<vector<pair<int,int>>>& casillasTerreno);
+int ladoMasFrio(const vector<unsigned char>& terreno, const state& st, vector<vector<int>>& heatMap, const vector<vector<pair<int,int>>>& casillasTerreno);
+// int ladoMasFrio(const state& current_state, const vector<vector<int>>& heatMap, const vector<vector<pair<int,int>>>& casillasTerreno);
 
 int casillaMasFria(state &st, const vector<vector<int>> &heatMap, const vector<vector<pair<int, int>>> &casillasTerreno);
-
-int direccionDesconocida(const state &current_state, const vector<vector<unsigned char>> &mapaResultado);
 
 void planeaHastaObjetivo(queue<Action> &plan, const int &objetivo, const state &st);
 

@@ -16,7 +16,17 @@ void print_queue(queue<Action> q)
 
 Action ComportamientoJugador::think(Sensores sensores)
 {
-	Action accion = actFORWARD;
+	Action accion = planDefault[indiceDefault];
+	indiceDefault = (indiceDefault+1)%planDefault.size();
+	if (indiceDefault==0) {
+		if ((random()%2)==0) {
+			plan.push(actTURN_SL);plan.push(actTURN_SL);
+		}
+		else {
+			plan.push(actTURN_SR);plan.push(actTURN_SR);
+		}
+	}
+	tocaAleatorio = (random()%3)!=0;
 	int a;
 	if (current_state.bien_situado)
 	{
@@ -140,7 +150,6 @@ Action ComportamientoJugador::think(Sensores sensores)
 	cout << "Bien situado: " << current_state.bien_situado << endl;
 	// cout << "Atrapado: " << current_state.atrapado << endl;
 	cout << "Longitud del plan: " << plan.size() << endl;
-	cout << "Longitud del plan secundario: " << planSecundario.size() << endl;
 	cout << endl;
 
 	// Si nos coge el lobo, ya no estaremos bien situados
@@ -190,127 +199,40 @@ Action ComportamientoJugador::think(Sensores sensores)
 		contadorRecarga += 1;
 		cout << "Recarga" << endl;
 	}
-	else
-	{
-		// Planear hasta donde llegar si no hay plan y hay un punto interesante cerca
-		if (plan.size() == 0)
-		{
-			// Calculamos si en nuestro rango de visión hay casillas desconocidas, en caso de que las haya, nos interesa ir a ellas
-			// antes que a otras que ya conocemos
-			int objetivo = encuentraElementoImportante(sensores.terreno, current_state, sensores.bateria);
-
-			if (objetivo != -1)
-			{
-				planeaHastaObjetivo(plan, objetivo, current_state);
-				// Vaciamos ya el plan Secundario
-				// cout << endl
-				// 	 << "Queremos ir hasta " << objetivo << endl;
-				// this_thread::sleep_for(chrono::seconds(2));
-				queue<Action> empty;
-				swap(planSecundario, empty);
-			}
-		}
-
-		// SIGUIENTE PASO: CONTROLAR COLISIONES, CAÍDAS...
-
-		// Si tenemos plan, lo seguimos
-		if (plan.size() != 0)
-		{
+	else if (plan.empty()) {
+		int objetivo = encuentraElementoImportante(sensores.terreno, current_state, sensores.bateria);
+		if (objetivo!=-1) {
+			planeaHastaObjetivo(plan, objetivo, current_state);
 			accion = plan.front();
 			plan.pop();
 		}
-		else
-		{
-			// if ( current_state.bien_situado)
-			// {
-			// 	if (planSecundario.empty())
-			// 	{
-			// 		// Buscamos la casilla más fría y nos movemos ahí
-			// 		// int posFria = casillaMasF2ria(current_state, heatMap, casillasTerreno);
-			// 		int ladoFrio = ladoMasFrio(current_state, heatMap, casillasTerreno);
-			// 		// cout << "Queremos ir hasta " << posFria << " por temperatura" << endl;
-			// 		// planeaHastaObjetivo(planSecundario, posFria, current_state);
-
-			// 		// Nos movemos en la dirección más fría
-			// 		planeaHastaObjetivo(planSecundario, ladoFrio, current_state);
-			// 	}
-			// 	accion = planSecundario.front();
-			// 	planSecundario.pop();
-			// }
-			// // Si aún no estamos situados, valoramos el movimiento por el tipo de terreno
-			// else
-			// {
-			// if (planSecundario.empty())
-			// {
-			// 	int ladoFrio = ladoMasFrioNoSituado(sensores.terreno, current_state);
-			// 	planeaHastaObjetivo(planSecundario, ladoFrio, current_state);
-			// }
-			// accion = planSecundario.front();
-			// planSecundario.pop();
-
-			// else if ((sensores.terreno[2] == 'T' or sensores.terreno[2] == 'S' or sensores.terreno[2] == 'G' or (sensores.terreno[2] == 'B' && (sensores.bateria > 500 or current_state.tiene_zapatillas)) or (sensores.terreno[2] == 'A') && (sensores.bateria > 1000 or current_state.tiene_bikini)) and
-			// 		 sensores.superficie[2] == '_')
-			// {
-			// 	accion = actFORWARD;
-			// }
-			// else if (!girar_derecha)
-			// {
-			// 	accion = actTURN_SL;
-			// 	girar_derecha = (rand() % 2 == 0);
-			// 	// Si vemos un muro, es probable que estemos atrapados
-			// 	if (sensores.terreno[2] == 'M')
-			// 	{
-			// 		contadorAtrapado++;
-			// 		if (contadorAtrapado > 20)
-			// 			current_state.atrapado = true;
-			// 	}
-			// }
-			// else
-			// {
-			// 	accion = actTURN_SR;
-			// 	girar_derecha = (rand() % 2 == 0);
-			// 	// Si vemos un muro, es probable que estemos atrapados
-			// 	if (sensores.terreno[2] == 'M')
-			// 	{
-			// 		contadorAtrapado++;
-			// 		if (contadorAtrapado > 20)
-			// 			current_state.atrapado = true;
-			// 	}
-			// }
+		if ((objetivo==-1) and !tocaAleatorio) {
+			int miniObjetivo = ladoMasFrio(sensores.terreno, current_state, heatMap, casillasTerreno);
+			planeaHastaObjetivo(plan, miniObjetivo, current_state);
+			accion = plan.front();
+			plan.pop();
+			tocaAleatorio = (rand()%3)!=0;
 		}
+	}
+	else {
+		accion = plan.front(); plan.pop();
 	}
 	// Controlamos no tirarnos por el barranco ni chocarnos,  girando 135 grados y cancelando el plan
 	if (accion == actFORWARD && (sensores.terreno[2] == 'P' or sensores.terreno[2] == 'M' or sensores.superficie[2] != '_'))
 	{
-		// Si vemos un muro, es probable que estemos atrapados
-		// if (sensores.terreno[2] == 'M')
-		// {
-		// 	contadorAtrapado++;
-		// 	if (contadorAtrapado > 20)
-		// 		current_state.atrapado = true;
-		// }
-		
-		// Si hay un muro, un acantilado o un aldeano gastamos dos turnos para girar 90%
-		if (sensores.terreno[2] == 'P' or sensores.terreno[2] == 'M' or sensores.superficie[2] == 'a')
+		queue<Action> empty;
+		swap(plan, empty);
+		if (!girar_derecha)
 		{
-			if (!girar_derecha)
-			{
-				accion = actTURN_BL;
-				girar_derecha = (rand() % 2 == 0);
-				while (girar_derecha) {
-					plan.push(actTURN_SL);
-				}
-				plan.push(actFORWARD);
-			}
-			else
-			{
-				accion = actTURN_BR;
-				girar_derecha = (rand() % 2 == 0);
-				while (girar_derecha) {
-					plan.push(actTURN_SR);
-				}
-				plan.push(actFORWARD);
-			}
+			accion = actTURN_BL;
+			girar_derecha = (rand() % 2 == 0);
+			plan.push(actFORWARD);
+		}
+		else
+		{
+			accion = actTURN_BR;
+			girar_derecha = (rand() % 2 == 0);
+			plan.push(actFORWARD);
 		}
 	}
 
@@ -318,33 +240,33 @@ Action ComportamientoJugador::think(Sensores sensores)
 	return accion;
 }
 
-int ladoMasFrioNoSituado(const vector<unsigned char> &terreno, const state &st)
+int ladoMasFrio(const vector<unsigned char> &terreno, const state &st, vector<vector<int>>& heatMap, const vector<vector<pair<int,int>>>& casillasTerreno)
 {
-	vector<int> valoraciones(terreno.size());
+	vector<double> valoraciones(terreno.size());
+	if (st.bien_situado)
+		heatMap[st.fil][st.col]++;
 	for (int i = 0; i < valoraciones.size(); i++)
 	{
 		switch (terreno[i])
 		{
 		case 'B':
 			if (st.tiene_zapatillas)
-				valoraciones[i] = 20 * (16 - i) / 16;
+				valoraciones[i] = 2.0;
 			else
-				valoraciones[i] = 2 * (16 - i) / 16;
+				valoraciones[i] = 20.0;
 			break;
 		case 'A':
 			if (st.tiene_bikini)
-				valoraciones[i] = 30 * (16 - i) / 16;
+				valoraciones[i] = 3.0;
 			else
-				valoraciones[i] = 3 * (16 - i) / 16;
-		// case 'P':
-		// 	valoraciones[i] = 50 * (16 - i) / 16;
-		// 	break;
-		// case 'M':
-		// 	valoraciones[i] = 5 * (16 - i) / 16;
-		// 	break;
+				valoraciones[i] = 30.0;
+			break;
 		default:
-			valoraciones[i] = 1;
+			valoraciones[i] = 1.0;
+			break;
 		}
+		if (st.bien_situado) 
+			valoraciones[i] += heatMap[st.fil+casillasTerreno[st.brujula][i].first][st.col+casillasTerreno[st.brujula][i].second];
 	}
 	double izq = (double)(valoraciones[1] + valoraciones[4] + valoraciones[5] + valoraciones[9] + valoraciones[10] + valoraciones[11]) / 6.0;
 	double dcha = (double)(valoraciones[3] + valoraciones[7] + valoraciones[8] + valoraciones[13] + valoraciones[14] + valoraciones[15]) / 6.0;
@@ -359,51 +281,6 @@ int ladoMasFrioNoSituado(const vector<unsigned char> &terreno, const state &st)
 	return 2;
 }
 
-int ladoMasFrio(const state &st, const vector<vector<int>> &heatMap, const vector<vector<pair<int, int>>> &casillasTerreno)
-{
-	int i0 = st.fil, j0 = st.col;
-	double izq = (double)(heatMap[i0 + casillasTerreno[st.brujula][1].first][j0 + casillasTerreno[st.brujula][1].second] +
-						  heatMap[i0 + casillasTerreno[st.brujula][4].first][j0 + casillasTerreno[st.brujula][4].second] +
-						  heatMap[i0 + casillasTerreno[st.brujula][5].first][j0 + casillasTerreno[st.brujula][5].second] +
-						  heatMap[i0 + casillasTerreno[st.brujula][9].first][j0 + casillasTerreno[st.brujula][9].second] +
-						  heatMap[i0 + casillasTerreno[st.brujula][10].first][j0 + casillasTerreno[st.brujula][10].second] +
-						  heatMap[i0 + casillasTerreno[st.brujula][11].first][j0 + casillasTerreno[st.brujula][11].second]) /
-				 6.0;
-	double dcha = (double)(heatMap[i0 + casillasTerreno[st.brujula][3].first][j0 + casillasTerreno[st.brujula][3].second] +
-						   heatMap[i0 + casillasTerreno[st.brujula][7].first][j0 + casillasTerreno[st.brujula][7].second] +
-						   heatMap[i0 + casillasTerreno[st.brujula][8].first][j0 + casillasTerreno[st.brujula][8].second] +
-						   heatMap[i0 + casillasTerreno[st.brujula][13].first][j0 + casillasTerreno[st.brujula][13].second] +
-						   heatMap[i0 + casillasTerreno[st.brujula][14].first][j0 + casillasTerreno[st.brujula][14].second] +
-						   heatMap[i0 + casillasTerreno[st.brujula][15].first][j0 + casillasTerreno[st.brujula][15].second]) /
-				  6.0;
-	double medio = (double)(heatMap[i0 + casillasTerreno[st.brujula][2].first][j0 + casillasTerreno[st.brujula][2].second] +
-							heatMap[i0 + casillasTerreno[st.brujula][6].first][j0 + casillasTerreno[st.brujula][6].second] +
-							heatMap[i0 + casillasTerreno[st.brujula][12].first][j0 + casillasTerreno[st.brujula][12].second]) /
-				   3.0;
-	if (izq < dcha and izq < medio)
-		return 1;
-	else if (medio <= dcha and medio <= izq)
-		return 2;
-	else if (dcha < medio and dcha < izq)
-		return 3;
-	return 2;
-}
-
-int direccionDesconocida(const state &current_state, const vector<vector<unsigned char>> &mapaResultado)
-{
-	// Miramos en todas las direcciones y nos quedamos con la última que encontremos
-	// Nota: Nunca vamos a elegir en este caso la dirección que estamos mirando, porque ya hemos actualizado mapaResultado
-	int objetivo = -1;
-	if (mapaResultado[current_state.fil - 1][current_state.col] == '?')
-		objetivo = 0;
-	if (mapaResultado[current_state.fil + 1][current_state.col] == '?')
-		objetivo = 4;
-	if (mapaResultado[current_state.fil][current_state.col + 1] == '?')
-		objetivo = 2;
-	if (mapaResultado[current_state.fil][current_state.col - 1] == '?')
-		objetivo = 6;
-	return objetivo;
-}
 
 void planeaHastaObjetivo(queue<Action> &plan, const int &objetivo, const state &st)
 {
@@ -483,25 +360,8 @@ void planeaHastaObjetivo(queue<Action> &plan, const int &objetivo, const state &
 			plan.push(actFORWARD);
 		}
 	}
-}
-
-int casillaMasFria(state &st, const vector<vector<int>> &heatMap, const vector<vector<pair<int, int>>> &casillasTerreno)
-{
-	int minHeat = -1, posMinHeat = -1;
-
-	minHeat = heatMap[st.fil][st.col];
-	posMinHeat = 0;
-	for (int i = 0; i < 16; i++)
-	{
-		int fil = st.fil + casillasTerreno[st.brujula][i].first;
-		int col = st.col + casillasTerreno[st.brujula][i].second;
-		if (heatMap[fil][col] <= minHeat)
-		{
-			minHeat = heatMap[fil][col];
-			posMinHeat = i;
-		}
-	}
-	return posMinHeat;
+	cout << "Plan: ";
+	print_queue(plan);
 }
 
 int encuentraElementoImportante(const vector<unsigned char> &terreno, state &st, const int &bateria)
