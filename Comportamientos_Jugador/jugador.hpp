@@ -51,8 +51,7 @@ public:
     }
 
     indiceDefault = 0;
-    for (int i=0; i<size/3; i++)
-      planDefault.push_back(actFORWARD);
+    maxForward = size/2;
 
     for (int i = 0; i < 8; ++i)
       casillasTerreno.push_back(vector<pair<int, int>>(16));
@@ -134,7 +133,7 @@ private:
   Action last_action;
   bool girar_derecha;
   queue<Action> plan;
-  vector<Action> planDefault;
+  int maxForward;
   int indiceDefault;
   int contadorRecarga;
   int contadorAtrapado;

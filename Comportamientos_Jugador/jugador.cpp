@@ -16,8 +16,8 @@ void print_queue(queue<Action> q)
 
 Action ComportamientoJugador::think(Sensores sensores)
 {
-	Action accion = planDefault[indiceDefault];
-	indiceDefault = (indiceDefault+1)%planDefault.size();
+	Action accion = actFORWARD;
+	indiceDefault = (indiceDefault+1)%maxForward;
 	if (indiceDefault==0) {
 		if ((random()%2)==0) {
 			plan.push(actTURN_SL);plan.push(actTURN_SL);
@@ -243,8 +243,6 @@ Action ComportamientoJugador::think(Sensores sensores)
 int ladoMasFrio(const vector<unsigned char> &terreno, const state &st, vector<vector<int>>& heatMap, const vector<vector<pair<int,int>>>& casillasTerreno)
 {
 	vector<double> valoraciones(terreno.size());
-	if (st.bien_situado)
-		heatMap[st.fil][st.col]++;
 	for (int i = 0; i < valoraciones.size(); i++)
 	{
 		switch (terreno[i])
