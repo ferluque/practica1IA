@@ -50,9 +50,8 @@ public:
       }
     }
 
-    indiceDefault = 0;
-    for (int i=0; i<size/3; i++)
-      planDefault.push_back(actFORWARD);
+    avanzaN = size/3;
+    actualAvance = 1;
 
     for (int i = 0; i < 8; ++i)
       casillasTerreno.push_back(vector<pair<int, int>>(16));
@@ -134,8 +133,8 @@ private:
   Action last_action;
   bool girar_derecha;
   queue<Action> plan;
-  vector<Action> planDefault;
-  int indiceDefault;
+  int avanzaN;
+  int actualAvance;
   int contadorRecarga;
   int contadorAtrapado;
   vector<vector<pair<int, int>>> casillasTerreno;
@@ -144,6 +143,8 @@ private:
 };
 int ladoMasFrio(const vector<unsigned char>& terreno, const state& st, vector<vector<int>>& heatMap, const vector<vector<pair<int,int>>>& casillasTerreno);
 // int ladoMasFrio(const state& current_state, const vector<vector<int>>& heatMap, const vector<vector<pair<int,int>>>& casillasTerreno);
+
+void giraHacia(queue<Action> &plan, const int objetivo, const state &st);
 
 int casillaMasFria(state &st, const vector<vector<int>> &heatMap, const vector<vector<pair<int, int>>> &casillasTerreno);
 
